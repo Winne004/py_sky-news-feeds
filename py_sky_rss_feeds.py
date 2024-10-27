@@ -1,8 +1,12 @@
 from enum import Enum
 import logging
-from typing import List
+from typing import List, Optional
+from urllib.error import HTTPError
 import feedparser
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+# Configure logger for the module
+logger = logging.getLogger(__name__)
 
 
 class NewsCategory(str, Enum):
@@ -18,45 +22,61 @@ class NewsCategory(str, Enum):
 
 
 class Entry(BaseModel):
-    title: str
-    link: str
+    title: str = Field(..., description="Title of the news entry")
+    link: str = Field(..., description="Link to the full news article")
 
 
 class Entries(BaseModel):
-    entries: List[Entry]
-
-
-logger = logging.getLogger(__name__)
+    entries: List[Entry | None]
 
 
 class FeedParser:
-    def __init__(self, base_url):
+    def __init__(self, base_url: str):
         """
-        Initialize the FeedParser with the base URL.
+        Initialize the FeedParser with the base URL for the RSS feeds.
         """
         self.base_url = base_url
 
-    def parse(self, path, limit=None):
+    def parse(self, path: str, limit: Optional[int] = None) -> Entries:
         """
-        Parse the RSS feed from the given path. Optionally limit the number of entries returned.
+        Parse the RSS feed from the given path and return entries. Optionally limit the number of entries returned.
         """
-
         if limit and limit < 1:
-            raise ValueError("Limit must be > 0")
+            raise ValueError("Limit must be greater than 0")
+
+        url = self.base_url + path
+        logger.info("Fetching feed from %s", url)
 
         try:
-            url = self.base_url + path
-            logger.info("Fetching feed from %s", url)
             feed = feedparser.parse(url)
-            entries = feed.get("entries", [])
-            return Entries(entries=entries[:limit] if limit else entries)
+            if feed:
+                entries_data = feed.get("entries", [])
+                entries = (
+                    [Entry(**entry) for entry in entries_data[:limit]]
+                    if limit
+                    else entries_data
+                )
+                return Entries(entries=entries)
+            return Entries(entries=[])
+
+        except HTTPError as e:
+            logger.error("HTTP error %s fetching feed %s: %s", e.code, url, e)
+            if e.code == 404:
+                logger.error("Nonexistent RSS feed at %s", url)
+            raise
 
         except Exception as e:
-            logger.error("Error parsing feed {%s + %s}: %s", self.base_url, path, e)
+            logger.error("Unexpected error parsing feed from %s: %s", url, e)
+            raise
 
-    def parse_all_categories(self, path: NewsCategory, limit=None):
-
-        return {category.name: self.parse(category.value, limit) for category in path}
+    def parse_all_categories(self, limit: Optional[int] = None) -> dict:
+        """
+        Parse feeds from all categories and return a dictionary of entries by category name.
+        """
+        return {
+            category.name: self.parse(category.value, limit)
+            for category in NewsCategory
+        }
 
 
 class News(FeedParser):
@@ -67,18 +87,19 @@ class News(FeedParser):
     def __init__(self):
         super().__init__("https://feeds.skynews.com/feeds/rss")
 
-    def get_feed(self, category: NewsCategory, limit=None):
+    def get_feed(self, category: NewsCategory, limit: Optional[int] = None) -> Entries:
         """
-        Get a feed based on the category. Optionally limit the number of entries returned.
+        Get a feed based on the category and return entries. Optionally limit the number of entries returned.
         """
         return self.parse(category.value, limit)
 
-    def available_categories(self):
+    def available_categories(self) -> List[str]:
         """
         Return a list of available news categories.
         """
         return [category.name for category in NewsCategory]
 
 
-c = News().parse_all_categories(NewsCategory)
-print(c)
+if __name__ == "__main__":
+    news = News()
+    feeds = news.parse_all_categories(limit=5)
