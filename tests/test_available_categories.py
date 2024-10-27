@@ -1,7 +1,8 @@
 import unittest
 from unittest.mock import patch
+from urllib.error import HTTPError
 
-from py_sky_rss_feeds import News, NewsCategory, FeedParser
+from py_sky_rss_feeds import Entries, News, NewsCategory, FeedParser
 
 
 class TestNews(unittest.TestCase):
@@ -71,20 +72,26 @@ class TestNews(unittest.TestCase):
         with self.assertRaises(AttributeError):
             self.news.get_feed("INVALID_CATEGORY")
 
+    @patch("py_sky_rss_feeds.logger.error")  # Patch logger first
     @patch("py_sky_rss_feeds.feedparser.parse", side_effect=Exception("Parsing error"))
-    def test_parse_exception_handling(self, mock_parse):
-        """Test that parse handles exceptions and returns an empty list."""
-        result = self.news.parse("/invalid_path.xml")
-        self.assertEqual(result, [])
+    def test_parse_logs_exception(self, mock_parse, mock_logger):
+        """Test that parse logs an error when an exception occurs and raises it."""
+        # Instantiate the FeedParser
+        feed_parser = FeedParser("http://example.com")
 
-    @patch("py_sky_rss_feeds.feedparser.parse", side_effect=Exception("Parsing error"))
-    @patch("py_sky_rss_feeds.logger.error")
-    def test_parse_logs_exception(self, mock_logger, mock_parse):
-        """Test that parse logs an error when an exception occurs."""
-        self.news.parse("/invalid_path.xml")
+        # Use assertRaises to check that the exception is raised
+        with self.assertRaises(Exception) as context:
+            feed_parser.parse("/invalid_path.xml")
+
+        # Check that the exception message is as expected
+        self.assertEqual(str(context.exception), "Parsing error")
+
+        # Assert that the error logger was called once
         mock_logger.assert_called_once()
+
+        # Check that the log message contains the expected text
         args, _ = mock_logger.call_args
-        self.assertIn("Error parsing feed", args[0])
+        self.assertIn("Unexpected error parsing feed", args[0])
 
     # Test 8: Test parse with limit=None
     @patch("py_sky_rss_feeds.feedparser.parse")
@@ -139,11 +146,18 @@ class TestNews(unittest.TestCase):
         self.assertEqual(len(result.entries), 0)
 
     # Test 15: Test parse when feed returns non-200 HTTP status
-    @patch("py_sky_rss_feeds.feedparser.parse", side_effect=Exception("HTTP Error 404"))
-    def test_parse_http_error(self, mock_parse):
-        """Test parse when the feed URL returns a non-200 HTTP status code."""
-        result = self.news.parse("/nonexistent.xml")
-        self.assertEqual(result, [])
+    @patch("py_sky_rss_feeds.feedparser.parse")
+    def test_parse_http_error(
+        self,
+        mock_parse,
+    ):
+        """Test parse raises an HTTPError when the feed URL returns a non-200 status code."""
+        mock_parse.side_effect = HTTPError(
+            url="/nonexistent.xml", code=404, msg="Not Found", hdrs=None, fp=None
+        )
+
+        with self.assertRaises(HTTPError):
+            self.news.parse("/nonexistent.xml")
 
     # Test 16: Test large number of entries
     @patch("py_sky_rss_feeds.feedparser.parse")
@@ -211,7 +225,8 @@ class TestNews(unittest.TestCase):
     def test_parse_none_return(self, mock_parse):
         """Test parse when feedparser.parse returns None."""
         result = self.news.parse("/uk.xml")
-        self.assertEqual(result, None)
+        expected_result = Entries(entries=[])
+        self.assertEqual(result, expected_result)
 
 
 if __name__ == "__main__":
