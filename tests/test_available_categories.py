@@ -89,7 +89,6 @@ class TestNews(unittest.TestCase):
         args, _ = mock_logger.call_args
         self.assertIn("Unexpected error parsing feed", args[0])
 
-    # Test 8: Test parse with limit=None
     @patch("py_sky_rss_feeds.feedparser.parse")
     def test_parse_with_no_limit(self, mock_parse):
         """Test parse returns all entries when limit is None."""
@@ -102,20 +101,17 @@ class TestNews(unittest.TestCase):
         result = self.news.parse_feed("/uk.xml")
         self.assertEqual(len(result.entries), 5)
 
-    # Test 9: Test initialization of FeedParser
     def test_feedparser_initialization(self):
         """Test that FeedParser initializes with the correct base URL."""
         base_url = "http://example.com/rss"
         parser = FeedService(base_url, parser=FeedParser())
         self.assertEqual(parser.base_url, base_url)
 
-    # Test 10: Test News inherits from FeedParser correctly
     def test_news_inheritance(self):
         """Test that News is a subclass of FeedParser."""
         self.assertTrue(issubclass(News, FeedService))
         self.assertIsInstance(self.news, FeedService)
 
-    # Test 11: Test parse method constructs correct URL
     @patch("py_sky_rss_feeds.feedparser.parse")
     def test_parse_constructs_correct_url(self, mock_parse):
         """Test that parse constructs the correct URL."""
@@ -124,13 +120,11 @@ class TestNews(unittest.TestCase):
         expected_url = self.news.base_url + path
         mock_parse.assert_called_with(expected_url)
 
-    # Test 12: Test get_feed with non-enum category input
     def test_get_feed_non_enum_category(self):
         """Test get_feed with a non-Enum category input."""
         with self.assertRaises(AttributeError):
             self.news.get_feed("/uk.xml")
 
-    # Test 14: Test parse with malformed XML
     @patch("py_sky_rss_feeds.feedparser.parse")
     def test_parse_malformed_xml(self, mock_parse):
         """Test parse with malformed XML data."""
@@ -141,7 +135,6 @@ class TestNews(unittest.TestCase):
         result = self.news.parse_feed("/uk.xml")
         self.assertEqual(len(result.entries), 0)
 
-    # Test 15: Test parse when feed returns non-200 HTTP status
     @patch("py_sky_rss_feeds.feedparser.parse")
     def test_parse_http_error(
         self,
@@ -155,7 +148,6 @@ class TestNews(unittest.TestCase):
         with self.assertRaises(HTTPError):
             self.news.parse_feed("/nonexistent.xml")
 
-    # Test 16: Test large number of entries
     @patch("py_sky_rss_feeds.feedparser.parse")
     def test_parse_large_number_of_entries(self, mock_parse):
         """Test parse with a large number of entries."""
@@ -168,7 +160,6 @@ class TestNews(unittest.TestCase):
         result = self.news.parse_feed("/uk.xml")
         self.assertEqual(len(result.entries), 1000)
 
-    # Test 17: Test unicode and special characters in entries
     @patch("py_sky_rss_feeds.feedparser.parse")
     def test_parse_with_unicode_entries(self, mock_parse):
         """Test parse with entries containing Unicode and special characters."""
@@ -183,14 +174,12 @@ class TestNews(unittest.TestCase):
         self.assertEqual(result.entries[0].title, "Artículo con acentos")
         self.assertEqual(result.entries[1].title, "新闻标题")
 
-    # Test 18: Test parse with empty base URL
     @patch("py_sky_rss_feeds.feedparser.parse")
     def test_parse_with_empty_base_url(self, mock_parse):
         """Test parse when base_url is empty."""
         with self.assertRaises(ValidationError):
             FeedService("", FeedParser())
 
-    # Test 19: Test logging of information messages
     @patch("py_sky_rss_feeds.feedparser.parse")
     @patch("py_sky_rss_feeds.logger.info")
     def test_parse_logs_info_message(self, mock_logger, mock_parse):
