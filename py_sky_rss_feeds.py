@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from enum import Enum
 import logging
-from typing import Any, List, Optional
+from typing import List, Optional
 from urllib.error import HTTPError
 import feedparser
-from pydantic import AnyUrl, BaseModel, Field, ValidationError, validate_call
+from pydantic import AnyUrl, BaseModel, Field
 
 # Configure logger for the module
 logger = logging.getLogger(__name__)
@@ -31,19 +31,15 @@ class Entries(BaseModel):
     entries: List[Entry | None]
 
 
-class RssUrl(BaseModel):
-    url: AnyUrl
-
-
 class FeedParserInterface(ABC):
     @abstractmethod
-    def parse(self, url: str, limit: int = None) -> Any:
+    def parse(self, url: str, limit: int = None) -> Entries:
         """Parses a feed from the given URL and returns the result."""
         pass
 
 
 class FeedParser(FeedParserInterface):
-    def parse(self, url: str, limit: int = None) -> Any:
+    def parse(self, url: str, limit: int = None) -> Entries:
         try:
             feed = feedparser.parse(url)
 
@@ -69,13 +65,12 @@ class FeedParser(FeedParserInterface):
 
 
 class FeedService:
-    def __init__(self, base_url: str, parser: FeedParserInterface):
-        self.parser: FeedParserInterface = parser
-        self.base_url: str = self._validate_and_set_url(base_url)
-
-    def _validate_and_set_url(self, base_url: str | AnyUrl) -> AnyUrl:
-        validated_url = RssUrl(url=base_url).url
-        return str(validated_url)
+    def __init__(
+        self, base_url: str, parser: FeedParserInterface, categories: NewsCategory
+    ):
+        self.parser: FeedParserInterface = parser()
+        self.base_url: str = str(AnyUrl(url=base_url))
+        self.categories: NewsCategory = categories
 
     def parse_feed(self, path: str, limit: Optional[int] = None) -> Entries:
         """
@@ -97,33 +92,29 @@ class FeedService:
         """
         return {
             category.name: self.parse_feed(category.value, limit)
-            for category in NewsCategory
+            for category in self.categories
         }
 
-
-class News(FeedService):
-    """
-    Class to handle various news categories from Sky News feeds.
-    """
-
-    def __init__(self, parser: FeedParserInterface):
-        super().__init__("https://feeds.skynews.com/feeds/rss", parser=parser)
-
-    def get_feed(self, category: NewsCategory, limit: Optional[int] = None) -> Entries:
+    def parse_category(
+        self, category: NewsCategory, limit: Optional[int] = None
+    ) -> Entries:
         """
-        Get a feed based on the category and return entries. Optionally limit the number of entries returned.
+        Parse feeds from all categories and return a dictionary of entries by category name.
         """
-
         return self.parse_feed(category.value, limit)
 
     def available_categories(self) -> List[str]:
         """
         Return a list of available news categories.
         """
-        return [category.name for category in NewsCategory]
+        return [category.name for category in self.categories]
 
 
 if __name__ == "__main__":
-    news = News(parser=FeedParser())
-    feeds = news.parse_all_categories(limit=5)
+    news = FeedService(
+        base_url="https://feeds.skynews.com/feeds/rss",
+        parser=FeedParser,
+        categories=NewsCategory,
+    )
+    feeds = news.parse_category(category=NewsCategory.HOME, limit=5)
     print(feeds)
