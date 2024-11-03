@@ -2,13 +2,15 @@ import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError
 
-from py_sky_rss_feeds import Entries, News, NewsCategory, FeedParser
+from pydantic import ValidationError
+
+from py_sky_rss_feeds import Entries, FeedParser, News, NewsCategory, FeedService
 
 
 class TestNews(unittest.TestCase):
     def setUp(self):
         """Initialize a News object before each test."""
-        self.news = News()
+        self.news = News(parser=FeedParser())
 
     def test_available_categories(self):
         """Test that available_categories returns the correct list of category names."""
@@ -76,20 +78,14 @@ class TestNews(unittest.TestCase):
     @patch("py_sky_rss_feeds.feedparser.parse", side_effect=Exception("Parsing error"))
     def test_parse_logs_exception(self, mock_parse, mock_logger):
         """Test that parse logs an error when an exception occurs and raises it."""
-        # Instantiate the FeedParser
-        feed_parser = FeedParser("http://example.com")
 
-        # Use assertRaises to check that the exception is raised
         with self.assertRaises(Exception) as context:
-            feed_parser.parse("/invalid_path.xml")
+            self.news.parse_feed("/invalid_path.xml")
 
-        # Check that the exception message is as expected
         self.assertEqual(str(context.exception), "Parsing error")
 
-        # Assert that the error logger was called once
         mock_logger.assert_called_once()
 
-        # Check that the log message contains the expected text
         args, _ = mock_logger.call_args
         self.assertIn("Unexpected error parsing feed", args[0])
 
@@ -103,28 +99,28 @@ class TestNews(unittest.TestCase):
                 for i in range(5)
             ]
         }
-        result = self.news.parse("/uk.xml")
+        result = self.news.parse_feed("/uk.xml")
         self.assertEqual(len(result.entries), 5)
 
     # Test 9: Test initialization of FeedParser
     def test_feedparser_initialization(self):
         """Test that FeedParser initializes with the correct base URL."""
         base_url = "http://example.com/rss"
-        parser = FeedParser(base_url)
+        parser = FeedService(base_url, parser=FeedParser())
         self.assertEqual(parser.base_url, base_url)
 
     # Test 10: Test News inherits from FeedParser correctly
     def test_news_inheritance(self):
         """Test that News is a subclass of FeedParser."""
-        self.assertTrue(issubclass(News, FeedParser))
-        self.assertIsInstance(self.news, FeedParser)
+        self.assertTrue(issubclass(News, FeedService))
+        self.assertIsInstance(self.news, FeedService)
 
     # Test 11: Test parse method constructs correct URL
     @patch("py_sky_rss_feeds.feedparser.parse")
     def test_parse_constructs_correct_url(self, mock_parse):
         """Test that parse constructs the correct URL."""
         path = "/test.xml"
-        self.news.parse(path)
+        self.news.parse_feed(path)
         expected_url = self.news.base_url + path
         mock_parse.assert_called_with(expected_url)
 
@@ -142,7 +138,7 @@ class TestNews(unittest.TestCase):
             "entries": [],
             "bozo_exception": Exception("Malformed XML"),
         }
-        result = self.news.parse("/uk.xml")
+        result = self.news.parse_feed("/uk.xml")
         self.assertEqual(len(result.entries), 0)
 
     # Test 15: Test parse when feed returns non-200 HTTP status
@@ -157,7 +153,7 @@ class TestNews(unittest.TestCase):
         )
 
         with self.assertRaises(HTTPError):
-            self.news.parse("/nonexistent.xml")
+            self.news.parse_feed("/nonexistent.xml")
 
     # Test 16: Test large number of entries
     @patch("py_sky_rss_feeds.feedparser.parse")
@@ -169,7 +165,7 @@ class TestNews(unittest.TestCase):
                 for i in range(1000)
             ]
         }
-        result = self.news.parse("/uk.xml")
+        result = self.news.parse_feed("/uk.xml")
         self.assertEqual(len(result.entries), 1000)
 
     # Test 17: Test unicode and special characters in entries
@@ -182,7 +178,7 @@ class TestNews(unittest.TestCase):
                 {"title": "新闻标题", "link": "http://example.com/2"},
             ]
         }
-        result = self.news.parse("/uk.xml")
+        result = self.news.parse_feed("/uk.xml")
         self.assertEqual(len(result.entries), 2)
         self.assertEqual(result.entries[0].title, "Artículo con acentos")
         self.assertEqual(result.entries[1].title, "新闻标题")
@@ -191,16 +187,15 @@ class TestNews(unittest.TestCase):
     @patch("py_sky_rss_feeds.feedparser.parse")
     def test_parse_with_empty_base_url(self, mock_parse):
         """Test parse when base_url is empty."""
-        parser = FeedParser("")
-        parser.parse("/uk.xml")
-        mock_parse.assert_called_with("/uk.xml")
+        with self.assertRaises(ValidationError):
+            FeedService("", FeedParser())
 
     # Test 19: Test logging of information messages
     @patch("py_sky_rss_feeds.feedparser.parse")
     @patch("py_sky_rss_feeds.logger.info")
     def test_parse_logs_info_message(self, mock_logger, mock_parse):
         """Test that parse logs an info message when fetching the feed."""
-        self.news.parse("/uk.xml")
+        self.news.parse_feed("/uk.xml")
         mock_logger.assert_called_once()
         args, _ = mock_logger.call_args
         self.assertIn("Fetching feed from", args[0])
@@ -224,7 +219,7 @@ class TestNews(unittest.TestCase):
     @patch("py_sky_rss_feeds.feedparser.parse", return_value=None)
     def test_parse_none_return(self, mock_parse):
         """Test parse when feedparser.parse returns None."""
-        result = self.news.parse("/uk.xml")
+        result = self.news.parse_feed("/uk.xml")
         expected_result = Entries(entries=[])
         self.assertEqual(result, expected_result)
 
