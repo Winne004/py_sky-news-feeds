@@ -1,13 +1,12 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-import logging
 from typing import List, Optional
 from urllib.error import HTTPError
+
 import feedparser
 from pydantic import AnyUrl, BaseModel, Field
 
-# Configure logger for the module
-logger = logging.getLogger(__name__)
+from classes.logger import logger
 
 
 class NewsCategory(str, Enum):
