@@ -4,17 +4,22 @@ from urllib.error import HTTPError
 
 from pydantic import ValidationError
 
-from py_sky_rss_feeds import Entries, FeedParser, NewsCategory, FeedService
+from py_sky_rss_feeds import (
+    Entries,
+    FeedParser,
+    NewsCategory,
+    FeedService,
+    NewsProvider,
+)
 
 
 class TestNews(unittest.TestCase):
     def setUp(self):
         """Initialize a News object before each test."""
-        self.news = FeedService(
-            base_url="https://feeds.skynews.com/feeds/rss",
-            parser=FeedParser,
-            categories=NewsCategory,
+        sky_news = NewsProvider(
+            categories=NewsCategory, base_url="https://feeds.skynews.com/feeds/rss"
         )
+        self.news = FeedService(parser=FeedParser, new_provider=sky_news)
 
     def test_available_categories(self):
         """Test that available_categories returns the correct list of category names."""
@@ -107,9 +112,12 @@ class TestNews(unittest.TestCase):
 
     def test_feedparser_initialization(self):
         """Test that FeedParser initializes with the correct base URL."""
-        base_url = "http://example.com/rss"
-        parser = FeedService(base_url, parser=FeedParser, categories=NewsCategory)
-        self.assertEqual(parser.base_url, base_url)
+        sky_news = NewsProvider(
+            categories=NewsCategory, base_url="https://feeds.skynews.com/feeds/rss"
+        )
+        parser = FeedService(parser=FeedParser, new_provider=sky_news)
+
+        self.assertEqual(parser.base_url, str(sky_news.base_url))
 
     @patch("py_sky_rss_feeds.feedparser.parse")
     def test_parse_constructs_correct_url(self, mock_parse):
@@ -177,7 +185,7 @@ class TestNews(unittest.TestCase):
     def test_parse_with_empty_base_url(self, mock_parse):
         """Test parse when base_url is empty."""
         with self.assertRaises(ValidationError):
-            FeedService("", FeedParser, NewsCategory)
+            news_provider = NewsProvider(categories=NewsCategory, base_url="")
 
     @patch("py_sky_rss_feeds.feedparser.parse")
     @patch("py_sky_rss_feeds.logger.info")
@@ -194,7 +202,7 @@ class TestNews(unittest.TestCase):
         self.assertEqual(self.news.base_url, expected_base_url)
 
     @patch("py_sky_rss_feeds.feedparser.parse")
-    def test_get_feed_with_zero_limit(self, mock_parse):
+    def test_get_feed_with_less_than_limit(self, mock_parse):
         """Test get_feed with limit set to zero."""
         with self.assertRaises(ValueError):
             self.news.parse_category(NewsCategory.UK, limit=-1)
@@ -207,10 +215,10 @@ class TestNews(unittest.TestCase):
         self.assertEqual(result, expected_result)
 
     @patch("py_sky_rss_feeds.feedparser.parse")
-    def test_not_correct_url(self, mock_parse):
+    def test_get_feed_with_zero_limit(self, mock_parse):
         """Test get_feed with limit set to zero."""
         with self.assertRaises(ValueError):
-            FeedService("not_a_url", parser=FeedParser, categories=NewsCategory)
+            self.news.parse_category(NewsCategory.UK, limit=0)
 
 
 if __name__ == "__main__":

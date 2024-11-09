@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Type, TypeVar
 from urllib.error import HTTPError
 
 import feedparser
@@ -9,7 +9,19 @@ from pydantic import AnyUrl, BaseModel, Field
 from classes.logger import logger
 
 
-class NewsCategory(str, Enum):
+class BaseNewsCategory(str, Enum):
+    pass
+
+
+CategoryType = TypeVar("CategoryType", bound=BaseNewsCategory)
+
+
+class NewsProvider(BaseModel):
+    categories: Type[CategoryType]
+    base_url: AnyUrl
+
+
+class NewsCategory(BaseNewsCategory):
     HOME = "/home.xml"
     UK = "/uk.xml"
     WORLD = "/world.xml"
@@ -39,6 +51,9 @@ class FeedParserInterface(ABC):
 
 class FeedParser(FeedParserInterface):
     def parse(self, url: str, limit: int = None) -> Entries:
+        if limit and limit < 1:
+            raise ValueError("Limit must be greater than 0")
+
         try:
             feed = feedparser.parse(url)
 
@@ -64,18 +79,16 @@ class FeedParser(FeedParserInterface):
 
 
 class FeedService:
-    def __init__(
-        self, base_url: str, parser: FeedParserInterface, categories: NewsCategory
-    ):
+    def __init__(self, parser: FeedParserInterface, new_provider: NewsProvider):
         self.parser: FeedParserInterface = parser()
-        self.base_url: str = str(AnyUrl(url=base_url))
-        self.categories: NewsCategory = categories
+        self.base_url = str(new_provider.base_url)
+        self.categories = new_provider.categories
 
     def parse_feed(self, path: str, limit: Optional[int] = None) -> Entries:
         """
         Parse the RSS feed from the given path and return entries. Optionally limit the number of entries returned.
         """
-        if limit and limit < 1:
+        if limit is not None and limit < 1:
             raise ValueError("Limit must be greater than 0")
 
         url = self.build_url(path=path)
@@ -110,10 +123,10 @@ class FeedService:
 
 
 if __name__ == "__main__":
-    news = FeedService(
-        base_url="https://feeds.skynews.com/feeds/rss",
-        parser=FeedParser,
-        categories=NewsCategory,
+
+    sky_news = NewsProvider(
+        categories=NewsCategory, base_url="https://feeds.skynews.com/feeds/rss"
     )
+    news = FeedService(parser=FeedParser, new_provider=sky_news)
     feeds = news.parse_category(category=NewsCategory.HOME, limit=5)
     print(feeds)
