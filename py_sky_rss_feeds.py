@@ -1,45 +1,15 @@
 from abc import ABC, abstractmethod
-from enum import Enum
-from typing import List, Optional, Type, TypeVar
+from typing import List, Optional
 from urllib.error import HTTPError
 
 import feedparser
-from pydantic import AnyUrl, BaseModel, Field
 
 from classes.logger import logger
-
-
-class BaseNewsCategory(str, Enum):
-    pass
-
-
-CategoryType = TypeVar("CategoryType", bound=BaseNewsCategory)
-
-
-class NewsProvider(BaseModel):
-    categories: Type[CategoryType]
-    base_url: AnyUrl
-
-
-class NewsCategory(BaseNewsCategory):
-    HOME = "/home.xml"
-    UK = "/uk.xml"
-    WORLD = "/world.xml"
-    US = "/us.xml"
-    BUSINESS = "/business.xml"
-    POLITICS = "/politics.xml"
-    TECHNOLOGY = "/technology.xml"
-    ENTERTAINMENT = "/entertainment.xml"
-    STRANGE = "/strange.xml"
-
-
-class Entry(BaseModel):
-    title: str = Field(..., description="Title of the news entry")
-    link: str = Field(..., description="Link to the full news article")
-
-
-class Entries(BaseModel):
-    entries: List[Entry | None]
+from classes.models.baseNewsCategory import BaseNewsCategory
+from classes.models.entries import Entries
+from classes.models.news_provider import NewsProvider
+from classes.news_providers.sky_news import sky_news
+from classes.news_providers.bbc_news import bbc_news
 
 
 class FeedParserInterface(ABC):
@@ -60,9 +30,7 @@ class FeedParser(FeedParserInterface):
             if feed:
                 entries_data = feed.get("entries", [])
                 entries = (
-                    [Entry(**entry) for entry in entries_data[:limit]]
-                    if limit
-                    else entries_data
+                    [entry for entry in entries_data[:limit]] if limit else entries_data
                 )
                 return Entries(entries=entries)
             return Entries(entries=[])
@@ -108,7 +76,7 @@ class FeedService:
         }
 
     def parse_category(
-        self, category: NewsCategory, limit: Optional[int] = None
+        self, category: BaseNewsCategory, limit: Optional[int] = None
     ) -> Entries:
         """
         Parse feeds from all categories and return a dictionary of entries by category name.
@@ -124,9 +92,12 @@ class FeedService:
 
 if __name__ == "__main__":
 
-    sky_news = NewsProvider(
-        categories=NewsCategory, base_url="https://feeds.skynews.com/feeds/rss"
+    sky_new_service = FeedService(parser=FeedParser, new_provider=sky_news)
+    bbc_news_service = FeedService(parser=FeedParser, new_provider=bbc_news)
+    feeds = sky_new_service.parse_category(
+        category=sky_new_service.categories.HOME, limit=5
     )
-    news = FeedService(parser=FeedParser, new_provider=sky_news)
-    feeds = news.parse_category(category=NewsCategory.HOME, limit=5)
+    feeds = bbc_news_service.parse_category(
+        category=bbc_news_service.categories.TOP_STORIES, limit=5
+    )
     print(feeds)
