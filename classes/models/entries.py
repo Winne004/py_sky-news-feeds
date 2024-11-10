@@ -1,5 +1,6 @@
-from typing import List
+from typing import Dict, List
 from pydantic import BaseModel, Field
+from pydantic_core import Url
 
 
 class Entry(BaseModel):
@@ -9,3 +10,11 @@ class Entry(BaseModel):
 
 class Entries(BaseModel):
     entries: List[Entry | None]
+
+
+class EntriesByCategory(BaseModel):
+    category: Dict[str, Entries]
+
+
+class CategoryByBaseUrl(BaseModel):
+    provider: Dict[Url, EntriesByCategory]

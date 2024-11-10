@@ -2,7 +2,7 @@ from enum import Enum
 from typing import List, Optional, Type
 from classes.utils.logger import logger
 from classes.services.feed_parsers import FeedParserInterface
-from classes.models.entries import Entries
+from classes.models.entries import Entries, EntriesByCategory
 from classes.models.news_provider import NewsProvider
 
 
@@ -27,14 +27,16 @@ class FeedService:
     def build_url(self, path: str):
         return self.base_url + path
 
-    def parse_all_categories(self, limit: Optional[int] = None) -> dict:
+    def parse_all_categories(self, limit: Optional[int] = None) -> List[Entries]:
         """
         Parse feeds from all categories and return a dictionary of entries by category name.
         """
-        return {
-            category.name: self.parse_feed(category.value, limit)
-            for category in self.categories
-        }
+        return EntriesByCategory(
+            category={
+                category.name: self.parse_feed(category.value, limit)
+                for category in self.categories
+            }
+        )
 
     def parse_category(self, category: Enum, limit: Optional[int] = None) -> Entries:
         """
