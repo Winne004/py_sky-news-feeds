@@ -29,9 +29,7 @@ class FeedParser(FeedParserInterface):
 
             if feed:
                 entries_data = feed.get("entries", [])
-                entries = (
-                    [entry for entry in entries_data[:limit]] if limit else entries_data
-                )
+                entries = [entries_data[:limit]] if limit else entries_data
                 return Entries(entries=entries)
             return Entries(entries=[])
 
