@@ -2,13 +2,8 @@ from abc import ABC, abstractmethod
 from newspaper import Article
 from goose3 import Goose
 from pydantic import AnyUrl, BaseModel, ValidationError
+from classes.models.parsed_article import ParsedArticle
 from classes.utils.logger import logger
-
-
-class ParsedArticle(BaseModel):
-    title: str
-    url: str
-    authors: list[str]
 
 
 class NewsArticleParserInterface(ABC):
