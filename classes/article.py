@@ -3,7 +3,7 @@ from typing import Any
 from newspaper import Article
 from goose3 import Goose
 from pydantic import AnyUrl, BaseModel, ValidationError
-from logger import logger
+from classes.logger import logger
 
 
 class ParsedArticle(BaseModel):

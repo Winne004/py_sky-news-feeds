@@ -1,15 +1,15 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from enum import Enum
+from pathlib import Path
+from typing import List, Optional, Type
 from urllib.error import HTTPError
 
 import feedparser
 
 from classes.logger import logger
-from classes.models.baseNewsCategory import BaseNewsCategory
 from classes.models.entries import Entries
 from classes.models.news_provider import NewsProvider
-from classes.news_providers.sky_news import sky_news
-from classes.news_providers.bbc_news import bbc_news
+from classes.news_providers import NewsProviders
 
 
 class FeedParserInterface(ABC):
@@ -47,7 +47,8 @@ class FeedParser(FeedParserInterface):
 
 
 class FeedService:
-    def __init__(self, parser: FeedParserInterface, new_provider: NewsProvider):
+
+    def __init__(self, parser: Type[FeedParserInterface], new_provider: NewsProvider):
         self.parser: FeedParserInterface = parser()
         self.base_url = str(new_provider.base_url)
         self.categories = new_provider.categories
@@ -75,9 +76,7 @@ class FeedService:
             for category in self.categories
         }
 
-    def parse_category(
-        self, category: BaseNewsCategory, limit: Optional[int] = None
-    ) -> Entries:
+    def parse_category(self, category: Enum, limit: Optional[int] = None) -> Entries:
         """
         Parse feeds from all categories and return a dictionary of entries by category name.
         """
@@ -91,13 +90,11 @@ class FeedService:
 
 
 if __name__ == "__main__":
-
-    sky_new_service = FeedService(parser=FeedParser, new_provider=sky_news)
-    bbc_news_service = FeedService(parser=FeedParser, new_provider=bbc_news)
-    feeds = sky_new_service.parse_category(
-        category=sky_new_service.categories.HOME, limit=5
-    )
-    feeds = bbc_news_service.parse_category(
-        category=bbc_news_service.categories.TOP_STORIES, limit=5
-    )
-    print(feeds)
+    config_directory = Path(__file__).parent / "config" / "news_providers.json"
+    news_providers = NewsProviders.init_from_config(path=config_directory)
+    for news_provider in news_providers.news_providers.values():
+        print(
+            FeedService(
+                parser=FeedParser, new_provider=news_provider
+            ).parse_all_categories(limit=5)
+        )
