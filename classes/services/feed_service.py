@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List, Optional, Type
-from classes.logger import logger
-from classes.feed_parser import FeedParserInterface
+from classes.utils.logger import logger
+from classes.services.feed_parsers import FeedParserInterface
 from classes.models.entries import Entries
 from classes.models.news_provider import NewsProvider
 

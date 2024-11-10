@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import feedparser
 from urllib.error import HTTPError
-from classes.logger import logger
+from classes.utils.logger import logger
 from classes.models.entries import Entries
 
 
@@ -9,7 +9,6 @@ class FeedParserInterface(ABC):
     @abstractmethod
     def parse(self, url: str, limit: int = None) -> Entries:
         """Parses a feed from the given URL and returns the result."""
-        pass
 
 
 class FeedParser(FeedParserInterface):

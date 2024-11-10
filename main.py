@@ -1,9 +1,9 @@
 from pathlib import Path
 
 
-from classes.feed_parser import FeedParser
-from classes.feed_service import FeedService
-from classes.news_providers import NewsProviders
+from classes.services.feed_parsers import FeedParser
+from classes.services.feed_service import FeedService
+from classes.services.news_providers import NewsProviders
 
 
 if __name__ == "__main__":

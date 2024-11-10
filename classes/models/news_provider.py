@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Type, TypeVar
+from typing import Type
 
 from pydantic import AnyUrl, BaseModel, field_validator
 
@@ -10,5 +10,5 @@ class NewsProvider(BaseModel):
 
     @field_validator("categories", mode="before")
     @classmethod
-    def validate_x(cls, categories):
+    def validate_categories(cls, categories):
         return Enum("BaseNewsCategory", categories, type=str)

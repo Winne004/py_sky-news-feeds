@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from newspaper import Article
 from goose3 import Goose
 from pydantic import AnyUrl, BaseModel, ValidationError
-from classes.logger import logger
+from classes.utils.logger import logger
 
 
 class ParsedArticle(BaseModel):

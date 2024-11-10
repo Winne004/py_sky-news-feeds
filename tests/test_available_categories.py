@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from classes.models.news_provider import NewsProvider
 from classes.news_providers.sky_news import sky_news
-from py_sky_rss_feeds import (
+from main import (
     Entries,
     FeedParser,
     FeedService,
