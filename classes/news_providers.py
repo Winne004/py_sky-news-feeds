@@ -1,10 +1,9 @@
 from dataclasses import dataclass, field
-from enum import Enum
 import json
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
-from pydantic import AnyUrl, ValidationError
+from pydantic import ValidationError
 
 from classes.logger import logger
 from classes.models.news_provider import NewsProvider
@@ -32,7 +31,7 @@ class NewsProviders:
     def register_provider(self, key: str, news_provider: NewsProvider):
         if key in self.news_providers:
             logger.warning(
-                f"Provider {key} is already registered and will be overwritten."
+                "Provider %s is already registered and will be overwritten.", key
             )
         self.news_providers[key] = news_provider
 
@@ -46,3 +45,10 @@ class NewsProviders:
         for provider, config in providers_config.providers.items():
             news_providers.register_provider(provider, config)
         return news_providers
+
+    @property
+    def providers(self) -> List[NewsProvider]:
+        """
+        A property that returns a list of all registered NewsProvider instances.
+        """
+        return list(self.news_providers.values())
