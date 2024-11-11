@@ -31,6 +31,7 @@ class Orchestrator:
         self.news_providers = news_providers
         self.feed_service = feed_service
         self.providers_by_categories: CategoryByBaseUrl | None = None
+        self.parsed_articles: List[ParsedArticle] | None = None
 
     def _fetch_categories_by_provider(self) -> CategoryByBaseUrl:
         categories_by_provider = {}
@@ -43,18 +44,7 @@ class Orchestrator:
 
         return CategoryByBaseUrl(provider=categories_by_provider)
 
-    def process(self, limit: int = None) -> List[ParsedArticle]:
-        """
-        Process all categories for each news provider and parse articles.
-
-        Args:
-            limit (Optional[int]): Maximum number of articles to process per category.
-
-        Returns:
-            List[ParsedArticle]: A list of parsed articles.
-        """
-        self.providers_by_categories = self._fetch_categories_by_provider()
-        print(self.providers_by_categories.model_dump_json())
+    def _parse_articles(self, limit):
         parsed_articles = []
 
         for provider in self.providers_by_categories.provider.values():
@@ -66,5 +56,18 @@ class Orchestrator:
                         parsed_articles.append(parsed_article)
                     except Exception as e:
                         logger.error("Error parsing article %s: %s", entry.link, e)
-
         return parsed_articles
+
+    def process(self, limit: int = None) -> List[ParsedArticle]:
+        """
+        Process all categories for each news provider and parse articles.
+
+        Args:
+            limit (Optional[int]): Maximum number of articles to process per category.
+
+        Returns:
+            List[ParsedArticle]: A list of parsed articles.
+        """
+        self.providers_by_categories = self._fetch_categories_by_provider()
+        parsed_articles = self._parse_articles(limit)
+        self.parsed_articles = parsed_articles

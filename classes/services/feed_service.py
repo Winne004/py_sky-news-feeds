@@ -9,7 +9,7 @@ from classes.models.news_provider import NewsProvider
 class FeedService:
 
     def __init__(self, parser: Type[FeedParserInterface], new_provider: NewsProvider):
-        self.parser: FeedParserInterface = parser()
+        self.parser: Type[FeedParserInterface] = parser()
         self.base_url = str(new_provider.base_url)
         self.categories = new_provider.categories
 
