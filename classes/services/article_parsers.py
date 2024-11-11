@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from newspaper import Article
 from goose3 import Goose
-from pydantic import AnyUrl, BaseModel, ValidationError
+from pydantic import AnyUrl, ValidationError
 from classes.models.parsed_article import ParsedArticle
 from classes.utils.logger import logger
 
@@ -30,6 +30,7 @@ class NewspaperArticleParser(NewsArticleParserInterface):
             title=newspaper_article.title,
             url=newspaper_article.url,
             authors=newspaper_article.authors,
+            body=newspaper_article.text_cleaned,
         )
         return newspaper_article
 
@@ -45,6 +46,7 @@ class GooseArticleParser(NewsArticleParserInterface):
             title=goose_article.title,
             url=goose_article.final_url,
             authors=goose_article.authors,
+            body=goose_article.cleaned_text,
         )
         return goose_article
 
