@@ -4,21 +4,21 @@ from urllib.error import HTTPError
 
 from pydantic import ValidationError
 
-from py_sky_rss_feeds import (
+from classes.models.news_provider import NewsProvider
+from classes.news_providers.sky_news import sky_news
+from main import (
     Entries,
     FeedParser,
-    NewsCategory,
     FeedService,
-    NewsProvider,
 )
 
 
 class TestNews(unittest.TestCase):
     def setUp(self):
         """Initialize a News object before each test."""
-        sky_news = NewsProvider(
-            categories=NewsCategory, base_url="https://feeds.skynews.com/feeds/rss"
-        )
+        # sky_news = NewsProvider(
+        #     categories=sky_news, base_url="https://feeds.skynews.com/feeds/rss"
+        # )
         self.news = FeedService(parser=FeedParser, new_provider=sky_news)
 
     def test_available_categories(self):
@@ -42,7 +42,7 @@ class TestNews(unittest.TestCase):
         mock_parse.return_value = {
             "entries": [{"title": "Article", "link": "http://example.com"}]
         }
-        for category in NewsCategory:
+        for category in sky_news.categories:
             result = self.news.parse_category(category)
             self.assertEqual(len(result.entries), 1)
             mock_parse.assert_called_with(self.news.base_url + category.value)
@@ -51,7 +51,7 @@ class TestNews(unittest.TestCase):
     def test_get_feed_no_entries(self, mock_parse):
         """Test get_feed when the feed returns no entries."""
         mock_parse.return_value = {"entries": []}
-        result = self.news.parse_category(NewsCategory.UK)
+        result = self.news.parse_category(sky_news.categories.UK)
         self.assertEqual(len(result.entries), 0)
 
     @patch("py_sky_rss_feeds.feedparser.parse")
@@ -63,7 +63,7 @@ class TestNews(unittest.TestCase):
                 {"title": "Article 2", "link": "http://example.com/2"},
             ]
         }
-        result = self.news.parse_category(NewsCategory.UK, limit=5)
+        result = self.news.parse_category(sky_news.categories.UK, limit=5)
         self.assertEqual(len(result.entries), 2)
 
     @patch("py_sky_rss_feeds.feedparser.parse")
@@ -75,7 +75,7 @@ class TestNews(unittest.TestCase):
                 {"title": "Article 2", "link": "http://example.com/2"},
             ]
         }
-        result = self.news.parse_category(NewsCategory.UK, limit=1)
+        result = self.news.parse_category(sky_news.categories.UK, limit=1)
         self.assertEqual(len(result.entries), 1)
 
     def test_get_feed_invalid_type(self):
@@ -112,9 +112,7 @@ class TestNews(unittest.TestCase):
 
     def test_feedparser_initialization(self):
         """Test that FeedParser initializes with the correct base URL."""
-        sky_news = NewsProvider(
-            categories=NewsCategory, base_url="https://feeds.skynews.com/feeds/rss"
-        )
+
         parser = FeedService(parser=FeedParser, new_provider=sky_news)
 
         self.assertEqual(parser.base_url, str(sky_news.base_url))
@@ -185,7 +183,7 @@ class TestNews(unittest.TestCase):
     def test_parse_with_empty_base_url(self, mock_parse):
         """Test parse when base_url is empty."""
         with self.assertRaises(ValidationError):
-            news_provider = NewsProvider(categories=NewsCategory, base_url="")
+            news_provider = NewsProvider(categories=sky_news.categories, base_url="")
 
     @patch("py_sky_rss_feeds.feedparser.parse")
     @patch("py_sky_rss_feeds.logger.info")
@@ -205,7 +203,7 @@ class TestNews(unittest.TestCase):
     def test_get_feed_with_less_than_limit(self, mock_parse):
         """Test get_feed with limit set to zero."""
         with self.assertRaises(ValueError):
-            self.news.parse_category(NewsCategory.UK, limit=-1)
+            self.news.parse_category(sky_news.categories.UK, limit=-1)
 
     @patch("py_sky_rss_feeds.feedparser.parse", return_value=None)
     def test_parse_none_return(self, mock_parse):
@@ -218,7 +216,7 @@ class TestNews(unittest.TestCase):
     def test_get_feed_with_zero_limit(self, mock_parse):
         """Test get_feed with limit set to zero."""
         with self.assertRaises(ValueError):
-            self.news.parse_category(NewsCategory.UK, limit=0)
+            self.news.parse_category(sky_news.categories.UK, limit=0)
 
 
 if __name__ == "__main__":

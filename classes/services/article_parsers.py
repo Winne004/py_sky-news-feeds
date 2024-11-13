@@ -1,27 +1,28 @@
 from abc import ABC, abstractmethod
-from typing import Any
 from newspaper import Article
 from goose3 import Goose
-from pydantic import AnyUrl, BaseModel, ValidationError
-from logger import logger
-
-
-class ParsedArticle(BaseModel):
-    title: str
-    url: str
-    authors: list[str]
+from pydantic import AnyUrl, ValidationError
+from classes.models.parsed_article import ParsedArticle
+from classes.utils.logger import logger
 
 
 class NewsArticleParserInterface(ABC):
     @abstractmethod
-    def article_parse(self, article_url: str) -> Any:
+    def article_parse(self, article_url: str) -> ParsedArticle:
         """Parses an article from the given URL and returns the result."""
-        pass
+
+    def is_article_url_valid(self, url: str):
+        try:
+            AnyUrl(url=url)
+            return True
+        except ValidationError as e:
+            logger.error("Invalid URL provided: %s", e)
+            raise
 
 
 class NewspaperArticleParser(NewsArticleParserInterface):
-    def article_parse(self, article_url: str) -> Any:
-        AnyUrl(url=article_url)
+    def article_parse(self, article_url: str) -> ParsedArticle:
+        self.is_article_url_valid(article_url)
         newspaper_article = Article(url=article_url)
         newspaper_article.download()
         newspaper_article.parse()
@@ -29,6 +30,7 @@ class NewspaperArticleParser(NewsArticleParserInterface):
             title=newspaper_article.title,
             url=newspaper_article.url,
             authors=newspaper_article.authors,
+            body=newspaper_article.text_cleaned,
         )
         return newspaper_article
 
@@ -37,17 +39,14 @@ class GooseArticleParser(NewsArticleParserInterface):
     def __init__(self):
         self.goose_extraction_object = Goose()
 
-    def article_parse(self, article_url: str) -> Any:
-        try:
-            AnyUrl(url=article_url)
-        except ValidationError as e:
-            logger.error(f"Invalid URL provided: {e}")
-            raise ValueError("Invalid article URL.") from e
+    def article_parse(self, article_url: str) -> ParsedArticle:
+        self.is_article_url_valid(article_url)
         goose_article = self.goose_extraction_object.extract(article_url)
         goose_article = ParsedArticle(
             title=goose_article.title,
             url=goose_article.final_url,
             authors=goose_article.authors,
+            body=goose_article.cleaned_text,
         )
         return goose_article
 
