@@ -22,12 +22,10 @@ class Orchestrator:
     def __init__(
         self,
         article_parser: NewspaperArticleParser,
-        feed_service: Type[FeedService],
-        feed_parser: Type[FeedParser],
+        feed_service: FeedService,
         news_providers: NewsProviders,
     ):
         self.article_parser = article_parser
-        self.feed_parser = feed_parser
         self.news_providers = news_providers
         self.feed_service = feed_service
         self.providers_by_categories: CategoryByBaseUrl | None = None
@@ -37,9 +35,8 @@ class Orchestrator:
         categories_by_provider = {}
         for news_provider in self.news_providers.providers:
 
-            feed_service = self.feed_service(self.feed_parser, news_provider)
             categories_by_provider[news_provider.base_url] = (
-                feed_service.parse_all_categories()
+                self.feed_service.parse_all_categories(news_provider=news_provider)
             )
 
         return CategoryByBaseUrl(provider=categories_by_provider)

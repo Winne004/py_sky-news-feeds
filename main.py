@@ -12,10 +12,11 @@ if __name__ == "__main__":
     config_directory = Path(__file__).parent / "config" / "news_providers.json"
     news_providers = NewsProviders.init_from_config(path=config_directory)
 
+    feed_service = FeedService(FeedParser())
+
     orchestrator = Orchestrator(
         article_parser=NewspaperArticleParser(),
-        feed_service=FeedService,
-        feed_parser=FeedParser,
+        feed_service=feed_service,
         news_providers=news_providers,
     )
     orchestrator.process(limit=5)
