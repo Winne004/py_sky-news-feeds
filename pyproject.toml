@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "my-py-feeds"
+version = "0.0.1"
+description = ""
+authors = ["Jeremy Winchester <jeremy.c.winchester@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pydantic = "^2.9.2"
+newspaper4k = "^0.9.3.1"
+goose3 = "^3.1.19"
+pathlib = "^1.0.1"
+lxml-html-clean = "^0.3.1"
+
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
